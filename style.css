@@ -1,0 +1,27 @@
+body {
+  font-family: sans-serif;
+  max-width: 640px;
+  margin: 40px auto;
+  padding: 0 16px;
+}
+
+.search {
+  display: flex;
+  gap: 8px;
+}
+
+#address-input {
+  flex: 1;
+  min-width: 0;
+  padding: 8px;
+  font-family: monospace;
+}
+
+#search-button {
+  padding: 8px 16px;
+}
+
+#result {
+  margin-top: 16px;
+  word-break: break-all;
+}
