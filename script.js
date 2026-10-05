@@ -127,25 +127,30 @@ function setLoading(loading) {
   statusArea.textContent = loading ? '조회 중...' : '';
 }
 
-// 실패해도 예외를 밖으로 던지지 않고 화면에 표시한다.
-async function showBalance(address) {
+// 지정한 블록 기준 잔액을 표시한다. 실패해도 예외를 밖으로 던지지 않고 화면에 표시한다.
+async function showBalance(address, hexBlockNumber) {
   try {
-    const hexBalance = await rpcRequest('eth_getBalance', [address, 'latest']);
-    resultArea.textContent = `잔액: ${formatEther(hexBalance)} ETH`;
+    // 블록 파라미터(QUANTITY|TAG)에 eth_blockNumber가 준 hex 문자열을 변환 없이 그대로 넣는다.
+    const hexBalance = await rpcRequest('eth_getBalance', [address, hexBlockNumber]);
+    resultArea.textContent = `블록 ${formatBlockNumber(hexBlockNumber)} 기준 잔액: ${formatEther(hexBalance)} ETH`;
   } catch (error) {
     errorArea.textContent = `잔액 조회 실패: ${errorMessage(error)}`;
   }
 }
 
+// 상단 블록 번호를 갱신하고 받은 hex 문자열을 돌려준다.
+// 실패하면 화면에 표시한 뒤 예외를 다시 던져, 호출한 쪽이 잔액 조회를 중단할 수 있게 한다.
 async function showBlockNumber() {
   blockNumberArea.textContent = '불러오는 중...';
   blockNumberArea.classList.remove('error');
   try {
     const hexBlockNumber = await rpcRequest('eth_blockNumber', []);
     blockNumberArea.textContent = formatBlockNumber(hexBlockNumber);
+    return hexBlockNumber;
   } catch (error) {
     blockNumberArea.textContent = `조회 실패 - ${errorMessage(error)}`;
     blockNumberArea.classList.add('error');
+    throw error;
   }
 }
 
@@ -166,8 +171,16 @@ async function search() {
 
   setLoading(true);
   try {
-    // 잔액과 블록 번호를 동시에 갱신한다. 각 함수가 자기 오류를 처리하므로 한쪽 실패가 다른 쪽에 영향을 주지 않는다.
-    await Promise.all([showBalance(address), showBlockNumber()]);
+    // 블록 번호를 먼저 받고, 같은 블록 기준으로 잔액을 조회해 두 값의 시점을 맞춘다.
+    let hexBlockNumber;
+    try {
+      hexBlockNumber = await showBlockNumber();
+    } catch (error) {
+      // "latest"로 대체하지 않고 잔액 요청을 보내지 않는다.
+      errorArea.textContent = `블록 번호 조회에 실패해 잔액을 조회하지 않았습니다: ${errorMessage(error)}`;
+      return;
+    }
+    await showBalance(address, hexBlockNumber);
   } finally {
     // 성공하든 실패하든 로딩 상태를 해제한다.
     setLoading(false);
@@ -179,5 +192,5 @@ addressInput.addEventListener('keydown', (event) => {
   if (event.key === 'Enter') search();
 });
 
-// 페이지를 열었을 때 한 번 블록 번호를 표시한다.
-showBlockNumber();
+// 페이지를 열었을 때 한 번 블록 번호를 표시한다. (오류는 showBlockNumber가 이미 화면에 표시했다)
+showBlockNumber().catch(() => {});
