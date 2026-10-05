@@ -21,7 +21,13 @@ body {
   padding: 8px 16px;
 }
 
-#result {
+#status,
+#result,
+#error {
   margin-top: 16px;
   word-break: break-all;
+}
+
+.error {
+  color: #c00;
 }
